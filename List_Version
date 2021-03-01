@@ -1,0 +1,489 @@
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+struct node {
+	node* pre = NULL;
+	short val;
+	node* next = NULL;
+	node(short n) { this->val = n; }
+};
+class My_List {
+public:
+	node* head, * end;
+	size_t size;
+	My_List() {
+		head = NULL;
+		end = NULL;
+		size = 0;
+	}
+	void push_back(short val) {
+		if (!head) {
+			head = new node(val);
+			end = head;
+		}
+		else if (end==head) {
+			end = new node(val);
+			end->pre = head;
+			head->next = end;
+		}
+		else {
+			node* p = end;
+			end->next = new node(val);
+			end = end->next;
+			end->pre = p;
+		}
+		size++;
+	}
+ 	void push_head(short val) {
+		if (!end) {
+			end = new node(val);
+			head = end;
+		}
+		else if (head==end) {
+			head = new node(val);
+			end->pre = head;
+			head->next = end;
+		}
+		else {
+			node* p = head;
+			head->pre = new node(val);
+			head = head->pre;
+			head->next = p;
+		}
+		size++;
+	}
+	void pop_back() {
+		if (head == end) {
+			delete head;
+			head = NULL, end = NULL;
+			size--;
+			return;
+		}
+		node* p = end;
+		end = end->pre;
+		delete p;
+		end->next = NULL;
+		size--;
+	}
+	void pop_head() {
+		if (head == end) {
+			delete head;
+			head = NULL, end = NULL;
+			size--;
+			return;
+		}
+		node* p = head;
+		head = head->next;
+		delete p;
+		head->pre = NULL;
+		size--;
+	}
+};
+
+void input2number_md(string input, My_List &number, short& decimal_length) {
+	bool decimal = 0;
+	for (short j = 0;j < input.size();j++) {
+		if (input[j] >= 48 && input[j] <= 57)
+			number.push_back(input[j] - 48);
+		if (decimal) decimal_length++;
+		if (input[j] == '.')
+			decimal = 1;
+	}
+}
+void input2number_ss(string input, My_List &number, My_List &decimal, bool positive) {
+	if (positive) {
+		for (short j = 0;j < input.size();j++) {
+			if (input[j] >= 48 && input[j] <= 57)
+				number.push_back(input[j] - 48);
+			if (input[j] == '.')
+				for (;j < input.size();j++)
+					if (input[j] >= 48 && input[j] <= 57)
+						decimal.push_back(input[j] - 48);
+		}
+	}
+	else {
+		for (short j = 0;j < input.size();j++) {
+			if (input[j] >= 48 && input[j] <= 57)
+				number.push_back(48 - input[j]);
+			if (input[j] == '.')
+				for (;j < input.size();j++)
+					if (input[j] >= 48 && input[j] <= 57)
+						decimal.push_back(48 - input[j]);
+		}
+	}
+}
+
+void carry(My_List& number) {
+	for (node* p = number.end;p;p = p->pre) {
+		if (p->val >= 10) {
+			if (p == number.head) {
+				number.push_head(1);
+			}
+			else {
+				p->pre->val += p->val / 10;
+				p->val %= 10;
+			}
+		}
+		else if (p->pre && p->val < 0) {
+			p->val += 10;
+			p->pre->val--;
+		}
+	}
+	while (number.size > 0 && !number.head->val)
+		number.pop_head();
+}
+void carry_for_decimal(My_List& decimal) {
+	for (node* p = decimal.end;p;p = p->pre)
+		if (p != decimal.head)
+			if (p->val >= 10) {
+				p->pre->val += p->val / 10;
+				p->val %= 10;
+			}
+			else if (p->val < 0) {
+				p->val += 10;
+				p->pre->val--;
+			}
+	while (decimal.end && decimal.size > 0 && !decimal.end->val)
+		decimal.pop_back();
+}
+void carry_for_md(My_List& number, short& decimal_length) {
+	for (node* p = number.end;p;p = p->pre) {
+		if (p->val >= 10) {
+			if (p == number.head)
+				number.push_head(p->val / 10);
+			else p->pre->val += p->val / 10;
+			p->val %= 10;
+		}
+	}
+	while (!number.head->val && number.size > 0 && number.size - decimal_length > 1)
+		number.pop_head();
+	while (number.end && decimal_length > 0 && !number.end->val) {
+		number.pop_back();
+		decimal_length--;
+	}
+	if (decimal_length > 10) {
+		node* p = number.head;
+		for (short i = 0;i < number.size - decimal_length + 10;i++)
+			p = p->next;
+		if (p->val >= 5)
+			p->pre->val++;
+		if (p->pre->val >= 10) {
+			p->pre->val -= 10;
+			p->pre->val++;
+		}
+	}
+}
+
+My_List sum(My_List number1, My_List number2) {
+	My_List number;
+	node* p1 = number1.end, * p2 = number2.end;
+    while(1) {
+		if (p1 && p2) {
+			number.push_head(p1->val + p2->val);
+			p1 = p1->pre, p2 = p2->pre;
+		}
+		else if (p1) {
+			number.push_head(p1->val);
+			p1 = p1->pre;
+		}
+		else if (p2) {
+			number.push_head(p2->val);
+			p2 = p2->pre;
+		} 
+		else break;
+	}
+	return number;
+}
+My_List subtract(My_List number1, My_List number2) {
+	My_List number;
+	node* p1 = number1.end, * p2 = number2.end;
+	while (1) {
+		if (p1 && p2) {
+			number.push_head(p1->val - p2->val);
+			p1 = p1->pre, p2 = p2->pre;
+		}
+		else if (p1) {
+			number.push_head(p1->val);
+			p1 = p1->pre;
+		}
+		else if (p2) {
+			number.push_head(-p2->val);
+			p2 = p2->pre;
+		}
+		else break;
+	}
+	return number;
+}
+My_List sum_decimal(My_List decimal1, My_List decimal2) {
+	My_List decimal;
+	node* p1 = decimal1.head, * p2 = decimal2.head;
+	while (1) {
+		if (p1 && p2) {
+			decimal.push_back(p1->val + p2->val);
+			p1 = p1->next, p2 = p2->next;
+		}
+		else if (p1) {
+			decimal.push_back(p1->val);
+			p1 = p1->next;
+		}
+		else if (p2) {
+			decimal.push_back(p2->val);
+			p2 = p2->next;
+		}
+		else break;
+	}
+	return decimal;
+}
+My_List subtract_decimal(My_List decimal1, My_List decimal2) {
+	My_List decimal;
+	node* p1 = decimal1.head, * p2 = decimal2.head;
+	while (1) {
+		if (p1 && p2) {
+			decimal.push_back(p1->val - p2->val);
+			p1 = p1->next, p2 = p2->next;
+		}
+		else if (p1) {
+			decimal.push_back(p1->val);
+			p1 = p1->next;
+		}
+		else if (p2) {
+			decimal.push_back(-p2->val);
+			p2 = p2->next;
+		}
+		else break;
+	}
+	return decimal;
+}
+My_List mutiple(My_List number1, My_List number2) {
+	My_List number;
+	short i = 0;
+	for (node* p1 = number1.end;p1;p1 = p1->pre, i++) {
+		My_List temp_number;
+		for (node* p2 = number2.end;p2;p2 = p2->pre)
+			temp_number.push_head(p1->val * p2->val);
+		for (short j = 0;j < i;j++)
+			temp_number.push_back(0);
+		number = sum(number, temp_number);
+	}
+	return number;
+}
+My_List divide(My_List number1, My_List number2, short decimal_length1, short decimal_length2) {
+	My_List number;
+	while (!number2.head->val) number2.pop_head();
+	short extra_zero = 11 - decimal_length1 + decimal_length2;
+	short former_number2_size = number2.size;
+	for (short i = 0;i < extra_zero;i++)
+		number1.push_back(0);
+	while (number2.size < number1.size)
+		number2.push_back(0);
+	while (number2.size >= former_number2_size) {
+		short digit_result = 0;
+		short former_number1_size = number1.size;
+		while (1) {
+			if (number1.size < number2.size)
+				break;
+			number1 = subtract(number1, number2);
+			carry(number1);
+			bool positive = 1;
+			for (node* p = number1.head;p;p = p->next)
+				if (p->val < 0) {
+					positive = 0;
+					break;
+				}
+			if (positive) digit_result++;
+			else {
+				number1 = sum(number1, number2);
+				break;
+			}
+		}
+		number.push_back(digit_result);
+		number2.pop_back();
+	}
+	return number;
+}
+
+void turn(My_List &number) {
+	if (number.head) {
+		node* p = number.head;
+		while (p) {
+			p->val = -p->val;
+			p = p->next;
+		}
+	}
+}
+
+int main() {
+	string input1, input2;
+	input1.reserve(100), input2.reserve(100);
+	short n;
+	char instruction;
+	while (cin >> n) {
+		for (short i = 0;i < n;i++) {
+			short decimal_length1 = 0, decimal_length2 = 0, decimal_length = 0;
+			cin >> instruction >> input1 >> input2;
+			My_List number1, number2, number, decimal, decimal_1, decimal_2;
+			bool positive1 = 0, positive2 = 0, positive = 1, decimal1 = 0, decimal2 = 0;
+			if (input1[0] != '-')
+				positive1 = 1;
+			if (input2[0] != '-')
+				positive2 = 1;
+			if (instruction == '*' || instruction == '/') {
+				if (!positive1 && positive2 || positive1 && !positive2)
+					positive = 0;
+				input2number_md(input1, number1, decimal_length1);
+				input2number_md(input2, number2, decimal_length2);
+				if (instruction == '*') {
+					number = mutiple(number1, number2);
+					decimal_length = decimal_length1 + decimal_length2;
+					carry_for_md(number, decimal_length);
+					if (number.size == 1 && !number.head->val && !decimal_length) {
+						cout << 0 << endl;
+						continue;
+					}
+					if (!positive) cout << '-';
+					short first_output = 0, j = 0;
+					node* p = number.head;
+					if (number.size - decimal_length > 3) {
+						first_output = (number.size - decimal_length) % 3;
+						for (;j < first_output;j++) {
+							cout << p->val;
+							p = p->next;
+						}
+						if (first_output) cout << ",";
+					}
+					for (short o = 0;o < number.size - decimal_length - first_output;o++) {
+						cout << p->val;
+						if ((o + 1) % 3 == 0 && o + 1 != number.size - decimal_length - first_output)
+							cout << ",";
+						p = p->next;
+					}
+					if (decimal_length > 0) {
+						cout << '.';
+						if (decimal_length > 10) {
+							for (short i = 0;i < 10;i++) {
+								cout << p->val;
+								p = p->next;
+							}
+						}
+						else while (p) {
+							cout << p->val;
+							p = p->next;
+						}
+					}
+				}
+				else {
+					bool ERROR = 1;
+					node* p = number2.head;
+					for (short i = 0;p && i < 7;i++)
+						if (p->val > 0)
+							ERROR = 0;
+						else p = p->next;
+					if (ERROR) {
+						cout << "ERROR" << endl;
+						continue;
+					}
+					number = divide(number1, number2, decimal_length1, decimal_length2);
+					decimal_length = 11;
+					carry_for_md(number, decimal_length);
+					if (number.size == 1 && !number.head->val && !decimal_length) {
+						cout << 0 << endl;
+						continue;
+					}
+					if (!positive) cout << '-';
+					short first_output = 0, j = 0;
+					p = number.head;
+					if (number.size - decimal_length > 3) {
+						first_output = (number.size - decimal_length) % 3;
+						for (;j < first_output;j++) {
+							cout << p->val;
+							p = p->next;
+						}
+						if (first_output) cout << ",";
+					}
+					for (short o = 0;o < number.size - decimal_length - first_output;o++) {
+						cout << p->val;
+						if ((o + 1) % 3 == 0 && o + 1 != number.size - decimal_length - first_output)
+							cout << ",";
+						p = p->next;
+					}
+					if (decimal_length > 0) {
+						cout << '.';
+						if (decimal_length > 10) {
+							for (short i = 0;i < 10;i++) {
+								cout << p->val;
+								p = p->next;
+							}
+						}
+						else while (p) {
+							cout << p->val;
+							p = p->next;
+						}
+					}
+				}
+			}
+			else {
+				input2number_ss(input1, number1, decimal_1, positive1), input2number_ss(input2, number2, decimal_2, positive2);
+				if (instruction == '+')
+					number = sum(number1, number2), decimal = sum_decimal(decimal_1, decimal_2);
+				else number = subtract(number1, number2), decimal = subtract_decimal(decimal_1, decimal_2);
+				bool all_zero = 1;
+				for (node* p = number.head;p;p = p->next)
+					if (p->val < 0) {
+						positive = 0, all_zero = 0;
+						break;
+					}
+					else if (p->val > 0) {
+						all_zero = 0;
+						break;
+					}
+				if (!number.size || all_zero)
+					for (node* p = decimal.head;p;p = p->next)
+						if (p->val < 0) {
+							positive = 0;
+							break;
+						}
+				if (!positive) turn(number), turn(decimal);
+				carry_for_decimal(decimal);
+				if (decimal.size > 0)
+					if (decimal.head->val >= 10) {
+						number.end->val++;
+						decimal.head->val -= 10;
+					}
+					else if (decimal.head->val < 0) {
+						number.end->val--;
+						decimal.head->val += 10;
+					}
+				carry(number);
+				if (!positive) cout << '-';
+				if (!number.size) cout << 0;
+				short first_output = 0, j = 0;
+				node* p = number.head;
+				if (number.size > 3) {
+					first_output = number.size % 3;
+					for (;j < first_output;j++) {
+						cout << p->val;
+						p = p->next;
+					}
+					if (first_output) cout << ",";
+				}
+				for (short o = 0;o < number.size - first_output;o++) {
+					cout << p->val;
+					if ((o + 1) % 3 == 0 && o + 1 != number.size - first_output)
+						cout << ",";
+					p = p->next;
+				}
+				if (decimal.size > 0) {
+					cout << ".";
+					p = decimal.head;
+					while (p) {
+						cout << p->val;
+						p = p->next;
+					}
+				}
+			}
+			cout << endl;
+		}
+	}
+}

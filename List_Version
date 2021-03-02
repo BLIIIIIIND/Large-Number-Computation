@@ -304,7 +304,7 @@ My_List divide(My_List number1, My_List number2, short decimal_length1, short de
 	return number;
 }
 
-void turn(My_List &number) {
+void turn(My_List &number) {//把负数转变回整数，便可用统一的进位函数。
 	if (number.head) {
 		node* p = number.head;
 		while (p) {
